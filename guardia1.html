@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asignación de Guardia</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fc;
+            color: #333;
+            margin: 20px;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: #4CAF50;
+        }
+
+        label, button {
+            margin-top: 10px;
+            display: block;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        th {
+            background: linear-gradient(135deg, #4CAF50, #81C784);
+            color: white;
+            font-weight: bold;
+        }
+
+        td {
+            background-color: #fff;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+        td:first-child {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Estilo de los inputs */
+        input, select {
+            padding: 8px 10px;
+            font-size: 1rem;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            width: 200px;
+        }
+
+        input[type="date"] {
+            width: auto;
+        }
+
+        .input-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .input-container label {
+            flex-basis: 100%;
+        }
+
+        .calendar-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 5px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .calendar div {
+            padding: 8px;
+            text-align: center;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .calendar .header {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        .calendar .day {
+            background-color: #f9f9f9;
+        }
+
+        .calendar .guardia {
+            background-color: #FFEB3B;
+            font-weight: bold;
+        }
+
+        .calendar .empty {
+            background-color: #fff;
+        }
+
+    </style>
+    <script>
+        // Lista de empleados
+        const employees = ['Empleado1', 'Empleado2', 'Empleado3', 'Empleado4', 'Empleado5'];
+
+        // Añadir campo de entrada para festivos
+        function addHolidayInput() {
+            const container = document.getElementById('holidays_container');
+            const newInput = document.createElement('input');
+            newInput.type = 'date';
+            newInput.name = 'holidays';
+            container.appendChild(newInput);
+            container.appendChild(document.createElement('br')); // Salto de línea
+        }
+
+        // Cuando no haya festivos
+        function noHolidays() {
+            const holidayContainer = document.getElementById('holidays_container');
+            holidayContainer.innerHTML = '';  // Eliminar campos de entrada de festivos
+        }
+
+        // Añadir fecha de viaje
+        function addTripInput(emp) {
+            const container = document.getElementById(emp + "_trips_container");
+            const newDateInput = document.createElement('input');
+            newDateInput.type = 'date';
+            newDateInput.name = emp + '_trips_dates';
+            
+            const newEmployeeSelect = document.createElement('select');
+            newEmployeeSelect.name = emp + '_trips_people';
+            employees.forEach(function(employee) {
+                const option = document.createElement('option');
+                option.value = employee;
+                option.textContent = employee;
+                newEmployeeSelect.appendChild(option);
+            });
+
+            container.appendChild(newDateInput);
+            container.appendChild(newEmployeeSelect);
+            container.appendChild(document.createElement('br')); // Salto de línea
+        }
+
+        // Cuando no haya viajes
+        function noTrips(emp) {
+            const tripContainer = document.getElementById(emp + "_trips_container");
+            tripContainer.innerHTML = '';  // Eliminar campos de entrada de viajes
+        }
+
+        // Convertir cadena de fecha a objeto Date
+        function parseDate(dateString) {
+            return new Date(dateString);
+        }
+
+        // Calcular el horario de Guardia
+        function assignGuardias() {
+            const holidays = Array.from(document.querySelectorAll('input[name="holidays"]'))
+                .map(input => input.value ? parseDate(input.value) : null)
+                .filter(date => date !== null);
+
+            // Fechas de viaje por empleado
+            const tripsByEmployee = {};
+            employees.forEach(emp => {
+                const tripsDates = Array.from(document.querySelectorAll(`[name="${emp}_trips_dates"]`))
+                    .map(input => input.value ? parseDate(input.value) : null)
+                    .filter(date => date !== null);
+                tripsByEmployee[emp] = tripsDates;
+            });
+
+            // Obtener las fechas de inicio y fin de la guardia
+            const startDate = document.getElementById("start_date").value ? parseDate(document.getElementById("start_date").value) : null;
+            const endDate = document.getElementById("end_date").value ? parseDate(document.getElementById("end_date").value) : null;
+
+            if (!startDate || !endDate) {
+                alert("Por favor, seleccione la fecha de inicio y fin de la guardia.");
+                return;
+            }
+
+            // Solo fechas dentro del rango seleccionado
+            const availableDates = [];
+            for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
+                availableDates.push(new Date(day));
+            }
+
+            // Excluir los festivos
+            const availableDatesWithoutHolidays = availableDates.filter(date => {
+                return !holidays.some(holiday => holiday.toDateString() === date.toDateString());
+            });
+
+            // Asignación de guardias
+            const guardiaSchedule = {};
+            employees.forEach(emp => {
+                // Excluir fechas de viaje (no se asignan guardias en días de viaje)
+                const availableForEmp = availableDatesWithoutHolidays.filter(date => {
+                    return !tripsByEmployee[emp].some(trip => {
+                        const tripStart = tripsByEmployee[emp][0];
+                        const tripEnd = tripsByEmployee[emp][tripsByEmployee[emp].length - 1];
+                        return date >= tripStart && date <= tripEnd;
+                    });
+                });
+
+                // Asignar de forma aleatoria hasta 5 días de guardia
+                const guardias = [];
+                const numGuardias = Math.min(5, availableForEmp.length);  // Máximo 5 días
+                for (let i = 0; i < numGuardias; i++) {
+                    const randomIndex = Math.floor(Math.random() * availableForEmp.length);
+                    guardias.push(availableForEmp.splice(randomIndex, 1)[0]);
+                }
+                guardiaSchedule[emp] = guardias;
+            });
+
+            // Mostrar el resultado
+            displaySchedule(guardiaSchedule);
+            generateCalendars(guardiaSchedule);
+        }
+
+        // Mostrar la programación de las guardias
+        function displaySchedule(schedule) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';  // Limpiar resultados anteriores
+
+            employees.forEach(emp => {
+                let tableHTML = `<h2>Guardias de ${emp}</h2><table><thead><tr><th>Empleado</th><th>Fechas de Guardia</th></tr></thead><tbody>`;
+
+                tableHTML += `<tr><td>${emp}</td><td>`;
+                if (schedule[emp].length === 0) {
+                    tableHTML += "Sin guardia";
+                } else {
+                    schedule[emp].forEach(date => {
+                        tableHTML += `${date.toISOString().split('T')[0]}<br>`;
+                    });
+                }
+                tableHTML += `</td></tr></tbody></table>`;
+
+                resultDiv.innerHTML += tableHTML;
+            });
+        }
+
+        // Generar calendarios con las guardias
+        function generateCalendars(schedule) {
+            const calendarContainer = document.getElementById('calendar-container');
+            calendarContainer.innerHTML = '';  // Limpiar calendarios anteriores
+
+            const startDate = document.getElementById("start_date").value ? parseDate(document.getElementById("start_date").value) : null;
+            const endDate = document.getElementById("end_date").value ? parseDate(document.getElementById("end_date").value) : null;
+
+            const availableDates = [];
+            for (let day = startDate; day <= endDate; day.setDate(day.getDate() + 1)) {
+                availableDates.push(new Date(day));
+            }
+
+            employees.forEach(emp => {
+                const empCalendar = document.createElement('div');
+                empCalendar.classList.add('calendar-container');
+                const empTitle = document.createElement('h2');
+                empTitle.textContent = `Calendario de Guardia de ${emp}`;
+                empCalendar.appendChild(empTitle);
+
+                const calendar = document.createElement('div');
+                calendar.classList.add('calendar');
+                const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+                // Cabecera de días
+                daysOfWeek.forEach(day => {
+                    const dayHeader = document.createElement('div');
+                    dayHeader.classList.add('header');
+                    dayHeader.textContent = day;
+                    calendar.appendChild(dayHeader);
+                });
+
+                // Fechas
+                availableDates.forEach(date => {
+                    const dayCell = document.createElement('div');
+                    dayCell.classList.add('day');
+
+                    const dateStr = date.toISOString().split('T')[0];
+                    dayCell.textContent = date.getDate();
+
+                    if (schedule[emp] && schedule[emp].some(shiftDate => shiftDate.toISOString().split('T')[0] === dateStr)) {
+                        dayCell.classList.add('guardia');
+                    }
+
+                    calendar.appendChild(dayCell);
+                });
+
+                empCalendar.appendChild(calendar);
+                calendarContainer.appendChild(empCalendar);
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Asignación de Guardia</h1>
+    <form id="nightShiftForm">
+        <h2>Seleccione la fecha de inicio y fin de la Guardia</h2>
+        <label for="start_date">Fecha de inicio:</label>
+        <input type="date" id="start_date" name="start_date">
+        <br>
+        <label for="end_date">Fecha de fin:</label>
+        <input type="date" id="end_date" name="end_date">
+        <br><br>
+
+        <h2>Ingrese los días festivos (solo si es necesario)</h2>
+        <div id="holidays_container" class="input-container">
+            <input type="date" name="holidays"><br>
+        </div>
+        <button type="button" onclick="addHolidayInput()">Añadir día festivo</button>
+        <button type="button" onclick="noHolidays()">No hay días festivos</button>
+        <br><br>
+
+        <h2>Ingrese las fechas de viaje de cada empleado</h2>
+        <div id="trips_container">
+            <!-- Campos para agregar fechas de viaje de cada empleado -->
+            <div id="Empleado1_trips_container" class="input-container">
+                <input type="date" name="Empleado1_trips_dates">
+                <select name="Empleado1_trips_people">
+                    <option value="Empleado1">Empleado1</option>
+                </select><br>
+                <button type="button" onclick="addTripInput('Empleado1')">Añadir fecha de viaje</button>
+            </div>
+            <div id="Empleado2_trips_container" class="input-container">
+                <input type="date" name="Empleado2_trips_dates">
+                <select name="Empleado2_trips_people">
+                    <option value="Empleado2">Empleado2</option>
+                </select><br>
+                <button type="button" onclick="addTripInput('Empleado2')">Añadir fecha de viaje</button>
+            </div>
+            <div id="Empleado3_trips_container" class="input-container">
+                <input type="date" name="Empleado3_trips_dates">
+                <select name="Empleado3_trips_people">
+                    <option value="Empleado3">Empleado3</option>
+                </select><br>
+                <button type="button" onclick="addTripInput('Empleado3')">Añadir fecha de viaje</button>
+            </div>
+            <div id="Empleado4_trips_container" class="input-container">
+                <input type="date" name="Empleado4_trips_dates">
+                <select name="Empleado4_trips_people">
+                    <option value="Empleado4">Empleado4</option>
+                </select><br>
+                <button type="button" onclick="addTripInput('Empleado4')">Añadir fecha de viaje</button>
+            </div>
+            <div id="Empleado5_trips_container" class="input-container">
+                <input type="date" name="Empleado5_trips_dates">
+                <select name="Empleado5_trips_people">
+                    <option value="Empleado5">Empleado5</option>
+                </select><br>
+                <button type="button" onclick="addTripInput('Empleado5')">Añadir fecha de viaje</button>
+            </div>
+        </div>
+        <button type="button" onclick="assignGuardias()">Calcular Guardias</button>
+    </form>
+
+    <div id="result"></div>
+    <div id="calendar-container"></div>
+</body>
+</html>
